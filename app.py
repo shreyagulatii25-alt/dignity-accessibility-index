@@ -40,8 +40,8 @@ div[data-testid="stMetric"] {border:1px solid #e1e4e8;padding:1rem;border-radius
 """, unsafe_allow_html=True)
 
 def calc(r):
-    score = sum(w*x/2 for (_,w,_),x in zip(DIMS,r))
-    failed = [n for (n,_,g),x in zip(DIMS,r) if g and x == 0]
+    score = sum(w*x/2 for (_,w,_,_),x in zip(DIMS,r))
+    failed = [n for (n,_,g,_),x in zip(DIMS,r) if g and x == 0]
     raw = "Usable" if score >= 70 else ("Conditional" if score >= 50 else "Nominal")
     final = "Nominal" if failed else raw
     return score, raw, final, failed
