@@ -26,16 +26,27 @@ LABEL = {0:"Failing", 1:"Partial", 2:"Adequate"}
 
 st.markdown("""
 <style>
-.block-container {padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1280px;}
-.hero {padding: 1.8rem 2rem; border:1px solid #d9dde3; border-radius:18px;
-background:linear-gradient(135deg,#fafafa 0%,#f0f2f5 100%); margin-bottom:1rem;}
-.hero h1 {font-size:2.25rem; margin:0 0 .3rem 0; letter-spacing:-.03em;}
-.hero p {font-size:1.03rem; color:#4b5563; margin:0;}
-.kicker {font-size:.76rem; letter-spacing:.13em; text-transform:uppercase; font-weight:700; color:#5b6470;}
-.notice {padding:.85rem 1rem;border-left:4px solid #606a75;background:#f6f7f8;border-radius:6px;margin:.5rem 0 1rem;}
-.gate {font-size:.74rem;font-weight:700;border:1px solid #bbb;border-radius:999px;padding:.12rem .45rem;margin-left:.3rem;}
-.small {font-size:.84rem;color:#626b75;}
-div[data-testid="stMetric"] {border:1px solid #e1e4e8;padding:1rem;border-radius:14px;background:white;}
+:root { --dai-border: rgba(128,128,128,.28); --dai-muted: rgba(128,128,128,.9); }
+.block-container {padding-top:1.4rem; padding-bottom:3rem; max-width:1280px;}
+.hero {padding:1.8rem 2rem; border:1px solid var(--dai-border); border-radius:20px;
+background:rgba(128,128,128,.07); margin-bottom:1rem;}
+.hero h1 {font-size:2.35rem; margin:0 0 .3rem 0; letter-spacing:-.035em; color:inherit;}
+.hero p {font-size:1.05rem; margin:0; color:inherit; opacity:.82;}
+.kicker {font-size:.76rem; letter-spacing:.13em; text-transform:uppercase; font-weight:800; opacity:.65;}
+.notice {padding:.9rem 1rem;border:1px solid var(--dai-border);border-left:4px solid currentColor;
+background:rgba(128,128,128,.06);border-radius:10px;margin:.55rem 0 1.15rem;color:inherit;}
+.gate {font-size:.70rem;font-weight:800;border:1px solid currentColor;border-radius:999px;
+padding:.14rem .48rem;margin-left:.35rem;opacity:.8;}
+div[data-testid="stMetric"] {border:1px solid var(--dai-border);padding:1rem 1.05rem;
+border-radius:16px;background:rgba(128,128,128,.06);}
+div[data-testid="stMetric"] label, div[data-testid="stMetric"] [data-testid="stMetricValue"] {color:inherit !important;}
+div[data-testid="stTabs"] button {font-weight:650;}
+.result-card {border:1px solid var(--dai-border);border-radius:16px;padding:1rem 1.15rem;
+background:rgba(128,128,128,.06);margin:.6rem 0 1rem;}
+.result-title {font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;font-weight:800;opacity:.6;}
+.result-main {font-size:1.65rem;font-weight:800;margin:.15rem 0;}
+.small {font-size:.84rem;opacity:.72;}
+hr {border-color:var(--dai-border);}
 </style>
 """, unsafe_allow_html=True)
 
@@ -67,8 +78,8 @@ def next_actions(r):
     return actions
 
 st.markdown("""<div class="hero"><div class="kicker">Social Work × Working with AI</div>
-<h1>Dignity Accessibility Index</h1>
-<p>From toilet availability to <b>usable, safe and dignified access</b>.</p></div>""", unsafe_allow_html=True)
+<h1>Dignity Accessibility Index <span style="opacity:.55">(DAI)</span></h1>
+<p>From counting toilets to assessing <b>usable, safe and dignified access</b>.</p></div>""", unsafe_allow_html=True)
 st.markdown('<div class="notice"><b>Academic prototype.</b> This tool evaluates sanitation facilities, not people. The five built-in scenarios are illustrative and are <b>not real facility audits</b>.</div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4 = st.tabs(["Facility Evaluator", "Scenario Lab", "Portfolio View", "Method & Ethics"])
@@ -92,19 +103,27 @@ with tab1:
     with right:
         r=st.session_state.ratings
         score,raw,final,failed=calc(r)
+        label={"Usable":"USABLE","Conditional":"CONDITIONALLY USABLE","Nominal":"NOMINAL ONLY"}[final]
         a,b=st.columns(2)
         a.metric("DAI score", f"{score:.1f} / 100")
-        b.metric("Final classification", {"Usable":"USABLE","Conditional":"CONDITIONAL","Nominal":"NOMINAL ONLY"}[final])
+        b.metric("Final classification", label)
         c,d=st.columns(2)
-        c.metric("Raw score class", raw)
-        d.metric("Failed dignity gates", len(failed))
+        c.metric("Score-only class", raw)
+        d.metric("Essential gates failed", len(failed))
+        st.markdown(f"""<div class="result-card">
+          <div class="result-title">Decision rule</div>
+          <div class="result-main">{label}</div>
+          <div class="small">Weighted score: {score:.1f}/100 · Gate override: {"ACTIVE" if failed else "not triggered"}</div>
+        </div>""", unsafe_allow_html=True)
         if failed:
             st.error("Essential gate failure: " + ", ".join(failed))
         elif final=="Usable": st.success("No dignity gate has failed and the score is ≥70.")
         else: st.warning("No gate has failed, but the weighted score remains below the usable threshold.")
         st.subheader("Dignity profile")
         fig=go.Figure(go.Bar(x=[x[0] for x in DIMS], y=[x*50 for x in r], text=[LABEL[x] for x in r], textposition="auto"))
-        fig.update_layout(yaxis=dict(range=[0,100],title="Dimension rating (%)"), xaxis_tickangle=-35, height=390, margin=dict(l=20,r=10,t=10,b=90), showlegend=False)
+        fig.update_layout(yaxis=dict(range=[0,100],title="Dimension rating (%)"), xaxis_tickangle=-35,
+height=390, margin=dict(l=20,r=10,t=10,b=90), showlegend=False,
+paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color=None))
         st.plotly_chart(fig, use_container_width=True)
         st.subheader("Priority remediation")
         acts=next_actions(r)
@@ -132,10 +151,11 @@ with tab2:
     if choice.startswith("E"):
         st.markdown("### Why 85/100 can still mean nominal access")
         st.write("Scenario E performs strongly on eight dimensions but privacy is rated 0. The privacy gate prevents a high average from compensating for an essential dignity failure.")
-        if st.toggle("Simulate repairing the privacy lock"):
+        if st.toggle("Repair the privacy lock — simulate one targeted fix"):
             fixed=r.copy(); fixed[1]=2
             s2,_,f2,_=calc(fixed)
-            st.success(f"Privacy 0 → 2  |  DAI {score:.1f} → {s2:.1f}  |  {final} → {f2}")
+            st.success(f"PRIVACY 0 → 2   ·   DAI {score:.1f} → {s2:.1f}   ·   NOMINAL → {f2.upper()}")
+            st.caption("Illustrative intervention only. This is not a measured before–after result.")
     df=pd.DataFrame({"Dimension":[x[0] for x in DIMS],"Weight":[x[1] for x in DIMS],"Gate":[x[2] for x in DIMS],"Rating":r,"Status":[LABEL[x] for x in r]})
     st.dataframe(df, hide_index=True, use_container_width=True)
     st.caption("Illustrative prototype — not a real facility audit.")
@@ -157,7 +177,8 @@ with tab3:
     fig.add_trace(go.Bar(x=pdf["Scenario"],y=pdf["DAI"],text=pdf["Classification"],textposition="auto"))
     fig.add_hline(y=50,line_dash="dot",annotation_text="50")
     fig.add_hline(y=70,line_dash="dash",annotation_text="70")
-    fig.update_layout(height=390,yaxis_title="DAI score",xaxis_title="Illustrative scenario",showlegend=False)
+    fig.update_layout(height=390,yaxis_title="DAI score",xaxis_title="Illustrative scenario",showlegend=False,
+paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig,use_container_width=True)
     st.dataframe(pdf,hide_index=True,use_container_width=True)
     st.info("Conventional infrastructure count: 5 toilets. DAI outcome: only 1 of the 5 illustrative facilities is classified usable. This is a conceptual demonstration, not a prevalence estimate.")
@@ -181,3 +202,6 @@ The prototype is designed to make failures visible that a simple toilet count ca
     st.subheader("Data minimisation")
     st.write("A real implementation should store facility-level observations only. It should not collect names, phone numbers, facial images, health diagnoses, unnecessary sensitive characteristics, or records tracking which individual used which toilet.")
     st.caption("Prototype developed for an academic Social Work project. Built-in data are illustrative.")
+
+st.divider()
+st.caption("DAI academic prototype · Facility-level decision support · Built-in scenarios A–E are illustrative, not real audits · The index is not a validated national measure.")
